@@ -18,9 +18,26 @@ function App() {
       <section className="p-8 max-w-3xl mx-auto">
         <h2 className="text-2xl font-semibold mb-4">About Me</h2>
         <p className="text-gray-700">
-          I'm a Computer Science graduate from NTU with a strong passion for building scalable applications,
-          UI/UX design, and solving real-world problems with code. I've interned at SAP and Continental, and enjoy working across the stack.
+          Min is a Computer Science graduate from NTU with a strong passion for building scalable applications,
+          UI/UX design, and solving real-world problems with code. Currently working in ByteDance under the Tiktok E-Commerce Logistics 
+          Team, he currently builds interactive application that helps to optimize the efficiency of package pickups and deliveries.
+          In his free time, he enjoys hitting the gym or playing board games with friends.
         </p>
+      </section>
+
+      {/* Past Experience */}
+      <section className="p-8 max-w-3xl mx-auto">
+        <h2 className="text-2xl font-semibold mb-4">Past Experience</h2>
+        <ul className="space-y-4">
+          <li className="bg-white p-4 rounded shadow">
+            <h3 className="font-bold text-lg">SAP</h3>
+            <p>Working with AI Core which helps business leverage SAP's AI Resources as needed</p>
+          </li>
+          <li className="bg-white p-4 rounded shadow">
+            <h3 className="font-bold text-lg">Continental</h3>
+            <p>Helping to build interactive software for motorcar ecosystem</p>
+          </li>
+        </ul>
       </section>
 
       {/* Projects */}
