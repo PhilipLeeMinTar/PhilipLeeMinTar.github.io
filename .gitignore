@@ -1,0 +1,5 @@
+.DS_Store
+node_modules/
+
+# Private: résumé PDF contains personal contact details — never commit or publish
+resume/

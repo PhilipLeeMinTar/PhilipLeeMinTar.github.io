@@ -1,0 +1,105 @@
+{
+  "generatedAt": "2026-10-01T09:45:05.761Z",
+  "user": "PhilipLeeMinTar",
+  "repos": [
+    {
+      "name": "world_cup_scoreboard_2026",
+      "description": "Live World Cup 2026 prediction platform — React, Hono, SQLite, GitHub Actions.",
+      "url": "https://github.com/PhilipLeeMinTar/world_cup_scoreboard_2026",
+      "homepage": null,
+      "stars": 0,
+      "forks": 0,
+      "pushedAt": "2026-07-20T14:44:47Z",
+      "languages": [
+        {
+          "lang": "Python",
+          "pct": 63.3
+        },
+        {
+          "lang": "TypeScript",
+          "pct": 17
+        },
+        {
+          "lang": "Shell",
+          "pct": 8.5
+        },
+        {
+          "lang": "Go",
+          "pct": 8.3
+        }
+      ]
+    },
+    {
+      "name": "quiz-generator",
+      "description": "A quiz generator built on GPT 3.5",
+      "url": "https://github.com/PhilipLeeMinTar/quiz-generator",
+      "homepage": "https://min-htet-quiz-generator-tl3tsjk4rq-uc.a.run.app/",
+      "stars": 0,
+      "forks": 0,
+      "pushedAt": "2024-03-29T16:51:39Z",
+      "languages": [
+        {
+          "lang": "JavaScript",
+          "pct": 77.3
+        },
+        {
+          "lang": "CSS",
+          "pct": 18.2
+        },
+        {
+          "lang": "HTML",
+          "pct": 4.6
+        }
+      ]
+    },
+    {
+      "name": "PhilipLeeMinTar.github.io",
+      "description": "This site — React, Vite, Tailwind, with a simulated event-driven backend.",
+      "url": "https://github.com/PhilipLeeMinTar/PhilipLeeMinTar.github.io",
+      "homepage": null,
+      "stars": 0,
+      "forks": 0,
+      "pushedAt": "2025-08-16T09:02:21Z",
+      "languages": [
+        {
+          "lang": "JavaScript",
+          "pct": 71.2
+        },
+        {
+          "lang": "CSS",
+          "pct": 18.6
+        },
+        {
+          "lang": "HTML",
+          "pct": 10.2
+        }
+      ]
+    }
+  ],
+  "languages": [
+    {
+      "lang": "Python",
+      "pct": 62.1
+    },
+    {
+      "lang": "TypeScript",
+      "pct": 16.6
+    },
+    {
+      "lang": "Shell",
+      "pct": 8.3
+    },
+    {
+      "lang": "Go",
+      "pct": 8.2
+    },
+    {
+      "lang": "HTML",
+      "pct": 2.7
+    },
+    {
+      "lang": "JavaScript",
+      "pct": 1.6
+    }
+  ]
+}
