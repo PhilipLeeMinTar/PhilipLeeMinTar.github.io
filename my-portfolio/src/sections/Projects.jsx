@@ -35,7 +35,7 @@ function ProjectCard({ project, onOpen, highlighted }) {
           {project.period && <span className="shrink-0 font-mono text-xs text-subtle">{project.period}</span>}
         </span>
         {project.badge && (
-          <span className="mt-2 w-fit rounded-full bg-warn/15 px-2.5 py-0.5 text-xs font-semibold text-warn">
+          <span className="mt-2 w-fit rounded-full border border-warn/50 bg-warn/10 px-2.5 py-0.5 text-xs font-semibold text-fg">
             🏆 {project.badge}
           </span>
         )}
@@ -71,7 +71,7 @@ function ProjectDetails({ project, onClose }) {
         </button>
       </div>
       {project.badge && (
-        <p className="mt-3 w-fit rounded-full bg-warn/15 px-2.5 py-0.5 text-xs font-semibold text-warn">🏆 {project.badge}</p>
+        <p className="mt-3 w-fit rounded-full border border-warn/50 bg-warn/10 px-2.5 py-0.5 text-xs font-semibold text-fg">🏆 {project.badge}</p>
       )}
       <p className="mt-4 text-muted">{project.oneLiner}</p>
       <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted marker:text-subtle">

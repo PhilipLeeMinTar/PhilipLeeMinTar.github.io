@@ -105,10 +105,10 @@ export default function CommandPalette({ open, onClose, commands }) {
                 }`}
               >
                 <span>
-                  {query && <span className={`mr-2 text-xs ${i === active ? "opacity-80" : "text-subtle"}`}>{c.group} ›</span>}
+                  {query && <span className={`mr-2 text-xs ${i === active ? "" : "text-subtle"}`}>{c.group} ›</span>}
                   {c.label}
                 </span>
-                {c.hint && <span className={`truncate text-xs ${i === active ? "opacity-80" : "text-subtle"}`}>{c.hint}</span>}
+                {c.hint && <span className={`truncate text-xs ${i === active ? "" : "text-subtle"}`}>{c.hint}</span>}
               </div>
             </li>
           );

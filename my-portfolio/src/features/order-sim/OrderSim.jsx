@@ -172,7 +172,7 @@ export default function OrderSim() {
                 topic: <span className="text-accent">order-status-events</span>
               </h3>
               {view.rebalancing && (
-                <span className="rounded-full bg-warn/15 px-2.5 py-0.5 text-xs font-semibold text-warn">Rebalancing…</span>
+                <span className="rounded-full border border-warn/50 bg-warn/10 px-2.5 py-0.5 text-xs font-semibold text-fg">Rebalancing…</span>
               )}
             </div>
             <ul className="space-y-2">
