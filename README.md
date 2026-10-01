@@ -26,11 +26,17 @@ Site content lives in `my-portfolio/src/data/` (profile, experience, projects, s
 
 ## Deploy
 
-CI (`.github/workflows/ci.yml`) runs lint, tests and the build on every push and PR.
+CI (`.github/workflows/ci.yml`) runs lint, tests and the build on every pull request, on pushes to `main`, and on manual dispatch. Each run uploads the Pages artifact, so you can download exactly what would be deployed.
 
 Deploys are **opt-in**:
 
 - **Today:** the site is served from the `gh-pages` branch, published manually with `npm run deploy`.
-- **Switching to GitHub Actions:** set *Settings → Pages → Source* to **GitHub Actions** and add the repository variable `PAGES_DEPLOY=true`. Every push to `main` then deploys automatically, and the `gh-pages` package and branch can be retired.
+- **Switching to GitHub Actions:**
+  1. Merge to `main` with `PAGES_DEPLOY` unset. CI builds, but the deploy job is skipped and the live site doesn't change.
+  2. Set *Settings → Pages → Build and deployment → Source* to **GitHub Actions**.
+  3. Add the repository variable `PAGES_DEPLOY` = `true` (*Settings → Secrets and variables → Actions → Variables*).
+  4. Run the CI workflow on `main` (*Actions → CI → Run workflow*).
+
+  From then on, every push to `main` deploys. Afterwards you can delete the `gh-pages` branch, the `deploy`/`predeploy` scripts and the `gh-pages` package.
 
 `build/` is not committed.

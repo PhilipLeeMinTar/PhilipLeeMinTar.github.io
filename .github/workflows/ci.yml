@@ -9,9 +9,10 @@ on:
 permissions:
   contents: read
 
+# Superseded PR runs are cancelled; runs on main are never cancelled mid-deploy.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
   run:
@@ -21,8 +22,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -33,10 +34,12 @@ jobs:
       - run: npm run build # prebuild refreshes src/data/github.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/upload-pages-artifact@v3
-        if: github.ref == 'refs/heads/main'
+      # Uploaded on every run (including PRs) so the exact artifact that would be
+      # deployed can be inspected; only the gated `deploy` job below publishes it.
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: my-portfolio/build
+          retention-days: 7
 
   # Deploys to GitHub Pages only from main, and only once the owner opts in:
   #   1. Settings → Pages → Source: "GitHub Actions"
@@ -49,9 +52,12 @@ jobs:
     permissions:
       pages: write
       id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
