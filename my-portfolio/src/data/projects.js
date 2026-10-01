@@ -4,7 +4,7 @@ export const projects = [
     slug: "world-cup-2026",
     title: "World Cup 2026 Scoreboard",
     period: "2026",
-    oneLiner: "Live prediction platform for 17 friends across the 2026 FIFA World Cup.",
+    oneLiner: "Live prediction platform for 17 participants across the 2026 FIFA World Cup.",
     tags: ["typescript", "react", "hono", "sqlite", "cicd"],
     highlights: [
       "Full-stack live prediction platform covering group and knockout stages — vibe-coded with Claude Code.",
@@ -22,7 +22,7 @@ export const projects = [
     title: "Interactive Quiz Generator",
     period: "Mar 2024",
     oneLiner: "Generates quizzes on any topic with OpenAI GPT-3.5.",
-    tags: ["python", "react", "express", "openai", "rest"],
+    tags: ["react", "express", "openai", "rest"],
     highlights: [
       "Full-stack web app with a REST API backend integrated with OpenAI GPT-3.5 to generate questions and answers on any topic.",
       "Built with React, Vite and ExpressJS; responsive design across devices.",

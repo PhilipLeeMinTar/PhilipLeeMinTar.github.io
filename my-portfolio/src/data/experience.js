@@ -51,7 +51,7 @@ export const experience = [
     initials: "NTU",
     summary: "CGPA 4.80 / 5.00 · Nanyang Scholarship · Dean's List AY2021/2022",
     highlights: [
-      "CGPA 4.80 / 5.00, graduating with First Class Honours (Highest Distinction).",
+      "Graduated with First Class Honours (Highest Distinction), CGPA 4.80 / 5.00.",
       "Nanyang Scholarship — merit-based, university-wide.",
       "Dean's List, AY2021/2022.",
     ],

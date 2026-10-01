@@ -65,7 +65,7 @@ export default function Hero() {
           <div aria-hidden="true" className="absolute -inset-4 rounded-full bg-surface-2 blur-2xl" />
           <img
             src={profile.avatar}
-            alt="Profile avatar: SpongeBob in a police uniform"
+            alt="Profile avatar: Bikini Bottom police officers from SpongeBob SquarePants"
             width={256}
             height={256}
             fetchPriority="high"
