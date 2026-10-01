@@ -1,16 +1,36 @@
-# PhilipLeeMinTar.github.io
+# philipleemintar.github.io
 
-# React + Vite
+Personal portfolio of **Paing Min Htet**, Backend Engineer. Live at https://philipleemintar.github.io/
 
-OUTSIDE my-portfolio
+The centrepiece is a live, in-browser simulation of an event-driven order pipeline. It has a partitioned topic, a consumer group with rebalancing, retries with exponential backoff, a dead-letter queue, and idempotent consumers. The engine is a pure, seeded JavaScript module with unit tests (`my-portfolio/src/features/order-sim/`).
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Stack
 
-Currently, two official plugins are available:
+- React 19, Vite 6, Tailwind CSS v4 and framer-motion (`LazyMotion` + `m`), all plain JSX
+- Vitest and Testing Library
+- GitHub Actions CI
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Develop
 
-## Expanding the ESLint configuration
+```bash
+cd my-portfolio
+npm install
+npm run dev       # dev server
+npm test          # unit + smoke tests
+npm run lint
+npm run build     # fetches the GitHub snapshot (prebuild), then builds into build/
+npm run preview   # serve the production build
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Site content lives in `my-portfolio/src/data/` (profile, experience, projects, skills). Edit those files rather than the components.
+
+## Deploy
+
+CI (`.github/workflows/ci.yml`) runs lint, tests and the build on every push and PR.
+
+Deploys are **opt-in**:
+
+- **Today:** the site is served from the `gh-pages` branch, published manually with `npm run deploy`.
+- **Switching to GitHub Actions:** set *Settings → Pages → Source* to **GitHub Actions** and add the repository variable `PAGES_DEPLOY=true`. Every push to `main` then deploys automatically, and the `gh-pages` package and branch can be retired.
+
+`build/` is not committed.
