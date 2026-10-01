@@ -1,7 +1,7 @@
 import { NAV } from "./nav";
 import { profile } from "./profile";
 import { projects } from "./projects";
-import { skillGroups } from "./skills";
+import { usedSkillGroups } from "./skillUsage";
 
 const scrollTo = (id) => {
   document.getElementById(id)?.scrollIntoView({ block: "start" });
@@ -12,7 +12,6 @@ const openTab = (url) => window.open(url, "_blank", "noopener,noreferrer");
 
 // Command registry for the ⌘K palette. `actions` are app-level callbacks from App.jsx.
 export function buildCommands(actions) {
-  const usedSkills = new Set([...projects.flatMap((p) => p.tags)]);
   return [
     ...NAV.map((n) => ({ id: `go-${n.id}`, group: "Go to", label: n.label, run: () => scrollTo(n.id) })),
     { id: "theme", group: "Actions", label: "Toggle light / dark theme", run: actions.toggleTheme },
@@ -28,10 +27,8 @@ export function buildCommands(actions) {
       hint: p.period,
       run: () => actions.openProject(p.slug),
     })),
-    ...skillGroups.flatMap((g) =>
-      g.skills
-        .filter((s) => usedSkills.has(s.id))
-        .map((s) => ({ id: `skill-${s.id}`, group: "Filter projects by skill", label: s.label, run: () => actions.filterSkill(s.id) })),
+    ...usedSkillGroups.flatMap((g) =>
+      g.skills.map((s) => ({ id: `skill-${s.id}`, group: "Highlight skill", label: s.label, run: () => actions.filterSkill(s.id) })),
     ),
   ];
 }

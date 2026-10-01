@@ -65,7 +65,7 @@ export default function App() {
         openProject: setOpenProject,
         filterSkill: (id) => {
           setSkill(id);
-          document.getElementById("projects")?.scrollIntoView({ block: "start" });
+          document.getElementById("experience")?.scrollIntoView({ block: "start" });
         },
       }),
     [toggleTheme, copyEmail, bless, notify, setOpenProject, setSkill],
@@ -84,7 +84,7 @@ export default function App() {
         <Hero />
         <About />
         <SystemDemo />
-        <Experience skill={skill} />
+        <Experience skill={skill} onSkill={setSkill} />
         <Projects skill={skill} onSkill={setSkill} openSlug={openProject} onOpen={setOpenProject} />
         <GitHub />
         <Contact onCopyEmail={copyEmail} />

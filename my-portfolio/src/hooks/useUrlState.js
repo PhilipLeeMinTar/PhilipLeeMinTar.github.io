@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
+import { isKnownSkill } from "../data/skillUsage";
 
 // Selected skill lives in ?skill=<id> so a filtered view can be shared.
 export function useSkillParam() {
-  const [skill, setSkillState] = useState(() => new URLSearchParams(location.search).get("skill"));
+  // Unknown ids (typos, stale links, crafted text) are ignored.
+  const [skill, setSkillState] = useState(() => {
+    const id = new URLSearchParams(location.search).get("skill");
+    return isKnownSkill(id) ? id : null;
+  });
 
-  const setSkill = useCallback((next) => {
+  const setSkill = useCallback((value) => {
+    const next = isKnownSkill(value) ? value : null;
     const url = new URL(location.href);
     if (next) url.searchParams.set("skill", next);
     else url.searchParams.delete("skill");

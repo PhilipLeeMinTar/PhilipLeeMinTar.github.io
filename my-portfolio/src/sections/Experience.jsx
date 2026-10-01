@@ -5,6 +5,7 @@ import { ChevronIcon } from "../components/ui/icons";
 import Section from "../components/ui/Section";
 import { experience } from "../data/experience";
 import { skillLabel } from "../data/skills";
+import Skills from "./Skills";
 
 function OrgMark({ item }) {
   if (item.logo) {
@@ -24,14 +25,18 @@ function OrgMark({ item }) {
   );
 }
 
-function TimelineItem({ item, open, onToggle, dimmed }) {
+function TimelineItem({ item, open, onToggle, highlighted }) {
   const panelId = `exp-${item.id}-panel`;
   return (
-    <li className={`relative pl-14 transition-opacity ${dimmed ? "opacity-40" : ""}`}>
+    <li className="relative pl-14">
       <div className="absolute left-0 top-1">
         <OrgMark item={item} />
       </div>
-      <div className="rounded-2xl border border-line bg-surface transition-shadow hover:shadow-md">
+      <div
+        className={`rounded-2xl border bg-surface transition-shadow hover:shadow-md ${
+          highlighted ? "border-accent ring-2 ring-accent" : "border-line"
+        }`}
+      >
         <h3>
           <button
             type="button"
@@ -86,7 +91,7 @@ function TimelineItem({ item, open, onToggle, dimmed }) {
   );
 }
 
-export default function Experience({ skill }) {
+export default function Experience({ skill, onSkill }) {
   const [openId, setOpenId] = useState(experience[0].id);
   const listRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: listRef, offset: ["start 80%", "end 60%"] });
@@ -99,6 +104,7 @@ export default function Experience({ skill }) {
       title="Where I've worked"
       intro="Backend engineering from internship to production ownership. Expand a stop for the details."
     >
+      <Skills skill={skill} onSelect={onSkill} />
       <div ref={listRef} className="relative">
         <div aria-hidden="true" className="absolute bottom-4 left-5 top-4 w-px bg-line" />
         <m.div
@@ -113,7 +119,7 @@ export default function Experience({ skill }) {
               item={item}
               open={openId === item.id}
               onToggle={() => setOpenId((id) => (id === item.id ? null : item.id))}
-              dimmed={Boolean(skill) && item.kind === "work" && !item.tags.includes(skill)}
+              highlighted={Boolean(skill) && item.tags.includes(skill)}
             />
           ))}
         </ol>

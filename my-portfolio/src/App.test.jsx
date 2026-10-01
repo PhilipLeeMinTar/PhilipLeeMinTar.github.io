@@ -30,14 +30,32 @@ describe("App smoke test", () => {
     }
   });
 
-  it("filters projects by skill and reflects it in the URL", () => {
+  it("highlights a skill across jobs and projects and reflects it in the URL", () => {
     renderApp();
+    const experience = document.getElementById("experience");
     const projects = document.getElementById("projects");
-    fireEvent.click(within(projects).getByRole("button", { name: "Java" }));
+    fireEvent.click(within(experience).getByRole("button", { name: "Java" }));
     expect(location.search).toBe("?skill=java");
     expect(within(projects).getByText(/1 of 7 projects use Java/)).toBeInTheDocument();
-    fireEvent.click(within(projects).getByRole("button", { name: "Clear filter" }));
+    fireEvent.click(within(experience).getByRole("button", { name: "Clear" }));
     expect(location.search).toBe("");
+  });
+
+  it("explains job-only skills instead of showing zero projects", () => {
+    renderApp();
+    const experience = document.getElementById("experience");
+    fireEvent.click(within(experience).getByRole("button", { name: "Go" }));
+    expect(within(experience).getByText(/Go: 1 job · 0 projects/)).toBeInTheDocument();
+    expect(screen.getByText(/None of these projects use Go — it comes from my work experience/)).toBeInTheDocument();
+    fireEvent.click(within(experience).getByRole("button", { name: "Clear" }));
+  });
+
+  it("ignores unknown ?skill= values", () => {
+    history.replaceState(null, "", "/?skill=%3Cmade-up%3E");
+    renderApp();
+    expect(screen.queryByText(/projects use/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Pick one to highlight/)).toBeInTheDocument();
+    history.replaceState(null, "", "/");
   });
 
   it("opens a project dialog with a deep link", () => {
