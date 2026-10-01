@@ -6,15 +6,7 @@ function App() {
   const [expandedProjects, setExpandedProjects] = useState({});
 
   const toggleProject = (projectId) => {
-    console.log("Before toggle:", projectId, expandedProjects);
-    setExpandedProjects((prev) => {
-      const newState = {
-        ...prev,
-        [projectId]: !prev[projectId],
-      };
-      console.log("After toggle:", projectId, newState);
-      return newState;
-    });
+    setExpandedProjects((prev) => ({ ...prev, [projectId]: !prev[projectId] }));
   };
 
   return (
@@ -326,7 +318,12 @@ function App() {
             LinkedIn
           </a>
           , or reach out via email at{" "}
-          <strong className="text-gray-900">philiplee98@gmail.com</strong>.
+          <a
+            href="mailto:philiplee98@gmail.com"
+            className="text-blue-600 hover:text-blue-700 underline transition-colors duration-300"
+          >
+            philiplee98@gmail.com
+          </a>.
         </p>
       </motion.section>
 
