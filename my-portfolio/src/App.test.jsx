@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { domAnimation, LazyMotion } from "framer-motion";
 import { describe, expect, it } from "vitest";
 import App from "./App";
@@ -11,6 +11,28 @@ const renderApp = () =>
   );
 
 describe("App smoke test", () => {
+  it("survives keydown events without a key (browser autofill)", () => {
+    renderApp();
+    expect(() => window.dispatchEvent(new KeyboardEvent("keydown"))).not.toThrow();
+    const errors = [];
+    const onError = (e) => errors.push(e);
+    window.addEventListener("error", onError);
+    window.dispatchEvent(Object.assign(new Event("keydown"), { key: undefined }));
+    window.removeEventListener("error", onError);
+    expect(errors).toHaveLength(0);
+  });
+
+  it("pushes a history entry when a project opens and pops it on close", async () => {
+    renderApp();
+    const before = history.length;
+    fireEvent.click(screen.getByRole("button", { name: /Smart Robot Car/ }));
+    expect(location.hash).toBe("#project/robot-car");
+    expect(history.length).toBe(before + 1);
+    const dialog = screen.getByRole("dialog", { name: "Smart Robot Car" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(location.hash).toBe(""));
+  });
+
   it("renders the name, every section and no private details", () => {
     const { container } = renderApp();
     expect(screen.getByRole("heading", { level: 1, name: "Paing Min Htet" })).toBeInTheDocument();

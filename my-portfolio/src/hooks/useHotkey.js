@@ -11,6 +11,8 @@ export function useCommandHotkey(handler) {
 
   useEffect(() => {
     const onKey = (e) => {
+      // Chrome fires keydown with an undefined `key` when an autofill suggestion is picked.
+      if (typeof e.key !== "string") return;
       const mod = e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey);
       const slash = e.key === "/" && !e.metaKey && !e.ctrlKey && !isTyping(e.target);
       if (mod || slash) {
