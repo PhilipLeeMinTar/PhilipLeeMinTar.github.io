@@ -4,18 +4,21 @@
 // from a requestAnimationFrame loop. Models a Kafka/RocketMQ-style setup:
 //
 //   order service ──(status events, keyed by orderId)──▶ topic [P partitions]
-//        ──▶ consumer group (each partition owned by exactly one consumer)
+//        ──▶ consumer group (each partition fetched by one member per generation)
 //        ──▶ read model (latest status per order)
 //
-// Guarantees it demonstrates:
-//   - Per-key ordering: same orderId -> same partition -> processed in order.
-//   - At-least-once delivery: the producer occasionally re-sends an event and a
-//     consumer killed mid-flight leaves its message uncommitted for redelivery;
-//     consumers dedupe by eventId (idempotency key).
-//   - Retries with exponential backoff that block the partition (preserving
-//     order), then a dead-letter queue after maxAttempts.
-//   - Rebalancing: partitions are reassigned round-robin across live consumers,
-//     with a short stop-the-world pause.
+// What it demonstrates:
+//   - Per-key ordering: same orderId -> same partition -> processed in offset order.
+//   - Blocking retries with exponential backoff (head-of-line blocking keeps order),
+//     then a dead-letter queue after maxAttempts failed attempts.
+//   - Eager rebalancing: on join/leave every partition is reassigned, fetching
+//     pauses, and the group moves to a new generation. In-flight work from the old
+//     generation still finishes, but its offset commit is rejected, so the message
+//     is redelivered to the new owner.
+//   - At-least-once delivery: producer re-sends, a consumer crashing after applying
+//     a message but before committing it, and rejected commits all cause
+//     redelivery. Consumers dedupe by eventId (idempotency key), so the read model
+//     never applies an event twice.
 
 export const STATUSES = ["CREATED", "PICKED_UP", "IN_TRANSIT", "DELIVERED"];
 
@@ -25,8 +28,9 @@ export const DEFAULT_CONFIG = {
   ratePerSec: 6, // status events produced per second
   failureRate: 0.05, // probability a processing attempt fails
   duplicateRate: 0.03, // probability the producer re-sends an event (at-least-once)
-  maxAttempts: 4, // attempts before an event is dead-lettered
-  backoffBaseMs: 200, // retry backoff = base * 2^(attempt-1)
+  crashAfterApplyRate: 0.5, // probability a killed consumer had applied its in-flight event but not committed it
+  maxAttempts: 4, // failed attempts before an event is dead-lettered
+  backoffBaseMs: 200, // retry backoff = base * 2^(failures-1)
   processMinMs: 80,
   processMaxMs: 200,
   rebalanceMs: 400,
@@ -68,17 +72,32 @@ export function createSim(config = {}, seed = 42) {
     nextEventId: 1,
     nextOrderId: 1,
     nextConsumerId: 1,
+    logSeq: 0,
+    generation: 0,
     activeOrders: [], // producer side: { orderId, next } where next = index of next status to emit
-    partitions: Array.from({ length: cfg.partitions }, (_, id) => ({ id, queue: [], lockedBy: null })),
+    partitions: Array.from({ length: cfg.partitions }, (_, id) => ({ id, queue: [], lockedBy: null, nextOffset: 0 })),
     consumers: [],
     rebalanceUntil: 0,
+    lastRebalanceAt: 0,
     processedIds: new Set(),
     readModel: new Map(), // orderId -> { status, version, updatedAt }
-    appliedLog: new Map(), // orderId -> [versions applied, in order] (used to verify ordering)
+    processedLog: new Map(), // orderId -> versions in the order they were processed (verifies ordering)
     dlq: [],
     latencies: [],
-    completions: [], // timestamps of successful completions (throughput window)
-    stats: { produced: 0, duplicatesSent: 0, applied: 0, deduped: 0, outOfOrder: 0, retries: 0, dlq: 0, redelivered: 0, rebalances: 0 },
+    completions: [], // timestamps of successful first-time processing (throughput window)
+    stats: {
+      produced: 0,
+      duplicatesSent: 0,
+      applied: 0,
+      deduped: 0,
+      outOfOrder: 0,
+      committed: 0,
+      commitsRejected: 0,
+      retries: 0,
+      dlq: 0,
+      redelivered: 0,
+      rebalances: 0,
+    },
     log: [], // recent human-readable events for the UI
   };
   for (let i = 0; i < cfg.consumers; i++) addConsumer(sim, { silent: true });
@@ -87,7 +106,7 @@ export function createSim(config = {}, seed = 42) {
 }
 
 function pushLog(sim, kind, text) {
-  sim.log.push({ t: sim.now, kind, text });
+  sim.log.push({ seq: sim.logSeq++, t: sim.now, kind, text });
   if (sim.log.length > 30) sim.log.shift();
 }
 
@@ -97,7 +116,8 @@ function rand(sim, min, max) {
 
 function enqueue(sim, event) {
   const p = sim.partitions[partitionFor(event.orderId, sim.cfg.partitions)];
-  p.queue.push(event);
+  // Each record gets its own offset, even when the producer re-sends the same eventId.
+  p.queue.push({ ...event, offset: p.nextOffset++, failures: 0, readyAt: sim.now });
 }
 
 // Emit one status event. Mixes new orders with lifecycle progress of existing ones.
@@ -117,8 +137,6 @@ export function produceOne(sim) {
     status: STATUSES[version],
     version,
     producedAt: sim.now,
-    attempts: 0,
-    readyAt: sim.now,
   };
   order.next++;
   if (order.next >= STATUSES.length) sim.activeOrders = activeOrders.filter((o) => o !== order);
@@ -128,7 +146,7 @@ export function produceOne(sim) {
 
   // At-least-once producer: sometimes the same event is sent twice.
   if (sim.rng() < sim.cfg.duplicateRate) {
-    enqueue(sim, { ...event, attempts: 0 });
+    enqueue(sim, event);
     sim.stats.duplicatesSent++;
   }
   return event;
@@ -154,29 +172,48 @@ export function killConsumer(sim, id) {
   if (!c) return false;
   c.alive = false;
   if (c.busy) {
-    // Offset was never committed: the message stays at the head of its partition
-    // and will be redelivered to the partition's next owner.
-    sim.partitions[c.busy.partition].lockedBy = null;
+    const { event, partition } = c.busy;
+    // The offset was never committed, so the message stays at the head of its
+    // partition and is redelivered. Sometimes the crash happens *after* the side
+    // effect was applied — the redelivery is then caught by the idempotency check.
+    if (sim.rng() < sim.cfg.crashAfterApplyRate) {
+      processOnce(sim, event);
+      pushLog(sim, "bad", `${c.id} crashed after applying ${event.orderId} ${event.status} but before committing`);
+    } else {
+      pushLog(sim, "bad", `${c.id} crashed while processing ${event.orderId} ${event.status}`);
+    }
+    sim.partitions[partition].lockedBy = null;
     c.busy = null;
     sim.stats.redelivered++;
+  } else {
+    pushLog(sim, "bad", `${c.id} crashed`);
   }
   c.partitions = [];
   sim.consumers = sim.consumers.filter((x) => x !== c);
-  pushLog(sim, "bad", `${c.id} crashed — its partitions will be reassigned`);
   rebalance(sim);
   return true;
 }
 
+// Eager rebalance: every partition is reassigned round-robin and the group moves
+// to a new generation. Fetching pauses for `rebalanceMs`.
 export function rebalance(sim, { pause = true } = {}) {
   const alive = sim.consumers.filter((c) => c.alive);
   alive.forEach((c) => (c.partitions = []));
   if (alive.length > 0) {
     sim.partitions.forEach((p, i) => alive[i % alive.length].partitions.push(p.id));
   }
+  sim.generation++;
   if (pause) {
     sim.rebalanceUntil = sim.now + sim.cfg.rebalanceMs;
+    sim.lastRebalanceAt = sim.now;
     sim.stats.rebalances++;
-    pushLog(sim, "warn", alive.length ? `Rebalanced ${sim.partitions.length} partitions across ${alive.length} consumer(s)` : "No live consumers — lag will grow");
+    pushLog(
+      sim,
+      "warn",
+      alive.length
+        ? `Rebalance (generation ${sim.generation}): ${sim.partitions.length} partitions across ${alive.length} consumer(s)`
+        : "No live consumers — lag will grow",
+    );
   }
 }
 
@@ -196,44 +233,30 @@ function startNext(sim, c) {
     const head = p.queue[0];
     if (!head || p.lockedBy || head.readyAt > sim.now) continue;
     p.lockedBy = c.id;
-    head.attempts++;
-    c.busy = { partition: pid, event: head, doneAt: sim.now + rand(sim, sim.cfg.processMinMs, sim.cfg.processMaxMs) };
+    c.busy = {
+      partition: pid,
+      event: head,
+      generation: sim.generation,
+      startedAt: sim.now,
+      doneAt: sim.now + rand(sim, sim.cfg.processMinMs, sim.cfg.processMaxMs),
+    };
     c.cursor = (c.cursor + k + 1) % n;
     return;
   }
 }
 
-function complete(sim, c) {
-  const { partition, event } = c.busy;
-  const p = sim.partitions[partition];
-  c.busy = null;
-  p.lockedBy = null;
-
-  if (sim.rng() < sim.cfg.failureRate) {
-    if (event.attempts >= sim.cfg.maxAttempts) {
-      p.queue.shift();
-      sim.dlq.push({ ...event, failedAt: sim.now });
-      if (sim.dlq.length > 50) sim.dlq.shift();
-      sim.stats.dlq++;
-      pushLog(sim, "bad", `${event.orderId} ${event.status} → DLQ after ${event.attempts} attempts`);
-    } else {
-      // Blocking retry: keep the event at the head so per-key order is preserved.
-      event.readyAt = sim.now + sim.cfg.backoffBaseMs * 2 ** (event.attempts - 1);
-      sim.stats.retries++;
-      pushLog(sim, "warn", `${event.orderId} ${event.status} failed (attempt ${event.attempts}) — retry in ${Math.round(event.readyAt - sim.now)}ms`);
-    }
-    return;
-  }
-
-  p.queue.shift(); // commit offset
-  c.processed++;
-
+// Apply an event's side effect exactly once (idempotency key = eventId).
+function processOnce(sim, event) {
   if (sim.processedIds.has(event.eventId)) {
     sim.stats.deduped++;
-    pushLog(sim, "info", `Duplicate event #${event.eventId} ignored (idempotency key)`);
-    return;
+    pushLog(sim, "info", `Event #${event.eventId} already applied — redelivery ignored (idempotency key)`);
+    return false;
   }
   sim.processedIds.add(event.eventId);
+
+  const versions = sim.processedLog.get(event.orderId) ?? [];
+  versions.push(event.version);
+  sim.processedLog.set(event.orderId, versions);
 
   const current = sim.readModel.get(event.orderId);
   if (current && current.version >= event.version) {
@@ -242,15 +265,51 @@ function complete(sim, c) {
     sim.stats.outOfOrder++;
   } else {
     sim.readModel.set(event.orderId, { status: event.status, version: event.version, updatedAt: sim.now });
-    const applied = sim.appliedLog.get(event.orderId) ?? [];
-    applied.push(event.version);
-    sim.appliedLog.set(event.orderId, applied);
     sim.stats.applied++;
   }
 
   sim.latencies.push(sim.now - event.producedAt);
   if (sim.latencies.length > sim.cfg.latencyWindow) sim.latencies.shift();
   sim.completions.push(sim.now);
+  return true;
+}
+
+function complete(sim, c) {
+  const { partition, event, generation } = c.busy;
+  const p = sim.partitions[partition];
+  c.busy = null;
+  p.lockedBy = null;
+
+  if (sim.rng() < sim.cfg.failureRate) {
+    event.failures++;
+    if (event.failures >= sim.cfg.maxAttempts) {
+      p.queue.shift();
+      sim.dlq.push({ ...event, failedAt: sim.now });
+      if (sim.dlq.length > 50) sim.dlq.shift();
+      sim.stats.dlq++;
+      pushLog(sim, "bad", `${event.orderId} ${event.status} → DLQ after ${event.failures} failed attempts`);
+    } else {
+      // Blocking retry: keep the event at the head so per-key order is preserved.
+      event.readyAt = sim.now + sim.cfg.backoffBaseMs * 2 ** (event.failures - 1);
+      sim.stats.retries++;
+      pushLog(sim, "warn", `${event.orderId} ${event.status} failed (attempt ${event.failures}) — retry in ${Math.round(event.readyAt - sim.now)}ms`);
+    }
+    return;
+  }
+
+  processOnce(sim, event);
+  c.processed++;
+
+  if (generation !== sim.generation) {
+    // Commit from a previous generation is rejected (the group rebalanced while this
+    // was in flight). The offset stays put and the new owner gets it again.
+    sim.stats.commitsRejected++;
+    sim.stats.redelivered++;
+    pushLog(sim, "warn", `${c.id}: commit for ${event.orderId} rejected after rebalance — will be redelivered`);
+    return;
+  }
+  p.queue.shift(); // commit offset
+  sim.stats.committed++;
 }
 
 function tick(sim, dt) {
@@ -298,6 +357,7 @@ export function snapshot(sim) {
     .map(([orderId, v]) => ({ orderId, ...v }));
   return {
     now: sim.now,
+    generation: sim.generation,
     rebalancing: sim.now < sim.rebalanceUntil,
     partitions: sim.partitions.map((p) => {
       const owner = ownerOf(sim, p.id);
@@ -306,9 +366,9 @@ export function snapshot(sim) {
         id: p.id,
         depth: p.queue.length,
         owner: owner?.id ?? null,
-        blocked: Boolean(head && head.attempts > 0 && head.readyAt > sim.now),
-        head: head ? { orderId: head.orderId, status: head.status, attempts: head.attempts } : null,
-        preview: p.queue.slice(0, 10).map((e) => ({ eventId: e.eventId, status: e.status, attempts: e.attempts })),
+        blocked: Boolean(head && head.failures > 0 && head.readyAt > sim.now),
+        head: head ? { orderId: head.orderId, status: head.status, failures: head.failures } : null,
+        preview: p.queue.slice(0, 10).map((e) => ({ offset: e.offset, eventId: e.eventId, status: e.status, retrying: e.failures > 0 })),
       };
     }),
     consumers: sim.consumers.map((c) => ({

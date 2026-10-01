@@ -182,9 +182,9 @@ export default function OrderSim() {
                   <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden" aria-hidden="true">
                     {p.preview.map((e) => (
                       <span
-                        key={e.eventId}
-                        title={`#${e.eventId} ${e.status}`}
-                        className={`h-3 w-3 shrink-0 rounded-sm ${STATUS_STYLE[e.status]} ${e.attempts > 0 ? "ring-2 ring-bad" : ""}`}
+                        key={e.offset}
+                        title={`offset ${e.offset} · event #${e.eventId} ${e.status}${e.retrying ? " (retrying)" : ""}`}
+                        className={`h-3 w-3 shrink-0 rounded-sm ${STATUS_STYLE[e.status]} ${e.retrying ? "ring-2 ring-bad" : ""}`}
                       />
                     ))}
                     {p.depth > p.preview.length && <span className="ml-1 font-mono text-xs text-subtle">+{p.depth - p.preview.length}</span>}
@@ -291,14 +291,14 @@ export default function OrderSim() {
             <Metric label="Retries" value={m.retries} />
             <Metric label="Dead-lettered" value={m.dlq} tone={m.dlq ? "text-bad" : ""} />
             <Metric label="Duplicates ignored" value={m.deduped} />
-            <Metric label="Out-of-order" value={m.outOfOrder === 0 ? "0 ✓" : m.outOfOrder} tone={m.outOfOrder ? "text-bad" : "text-ok"} />
+            <Metric label="Redelivered" value={m.redelivered} />
           </dl>
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-subtle">Event log</h3>
             <ol className="space-y-1 font-mono text-[11px] leading-snug">
               {view.log.map((l) => (
                 <li
-                  key={`${l.t}-${l.text}`}
+                  key={l.seq}
                   className={l.kind === "bad" ? "text-bad" : l.kind === "warn" ? "text-warn" : "text-muted"}
                 >
                   <span className="text-subtle">{(l.t / 1000).toFixed(1)}s</span> {l.text}

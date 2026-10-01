@@ -4,10 +4,19 @@ import Section from "../components/ui/Section";
 const OrderSim = lazy(() => import("../features/order-sim/OrderSim"));
 
 const CONCEPTS = [
-  ["Partitioning by key", "Every event for an order lands on the same partition, so its statuses are applied in order."],
-  ["Consumer groups", "Each partition has exactly one owner. Kill a consumer and its partitions are rebalanced to the rest."],
-  ["Retries & DLQ", "Failures retry with exponential backoff, blocking the partition to keep order, then go to a dead-letter queue."],
-  ["Idempotency", "Producers deliver at-least-once; consumers dedupe by event id so a retry never double-applies."],
+  ["Partitioning by key", "Every event for an order lands on the same partition, so its statuses are processed in offset order."],
+  [
+    "Consumer groups",
+    "One consumer fetches each partition. Add or kill one and the group rebalances: every partition is reassigned, and commits from the old generation are rejected.",
+  ],
+  [
+    "Retries & DLQ",
+    "Failures retry in place with exponential backoff — preserving order at the cost of head-of-line blocking — then go to a dead-letter queue.",
+  ],
+  [
+    "Idempotency",
+    "Delivery is at-least-once: producer re-sends, crashes after applying but before committing, and rejected commits all redeliver. Consumers dedupe by event id.",
+  ],
 ];
 
 export default function SystemDemo() {
